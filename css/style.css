@@ -105,22 +105,12 @@ code {
     image-rendering: crisp-edges;
 }
 
-.hud {
-    position: absolute;
-    top: var(--space-2);
-    left: var(--space-2);
-    z-index: 20;
-    padding: var(--space-2) var(--space-3);
-    font-size: var(--font-size-sm);
-    color: #f6f7f0;
-    background: rgba(0, 0, 0, 0.6);
-    border-radius: var(--radius-sm);
-    pointer-events: none;
-    white-space: pre-line;
-}
-
 .side-panel {
     padding: var(--space-4);
+}
+
+.info-box {
+    margin-bottom: var(--space-4);
 }
 
 .side-panel h2 {
@@ -140,6 +130,17 @@ code {
 
 .side-panel li {
     margin-bottom: var(--space-2);
+}
+
+.game-info {
+    font-size: var(--font-size-sm);
+    color: #f2f8ef;
+    background: rgba(0, 0, 0, 0.28);
+    border: 2px solid #243328;
+    border-radius: var(--radius-sm);
+    padding: var(--space-3);
+    white-space: pre-line;
+    line-height: 1.45;
 }
 
 .modal {

@@ -31,7 +31,7 @@ const refs = {
     world: document.getElementById("game-world"),
     mapLayer: document.getElementById("map-layer"),
     playerSprite: document.getElementById("player-sprite"),
-    hud: document.getElementById("hud"),
+    gameInfo: document.getElementById("game-info"),
     fatalError: document.getElementById("fatal-error"),
     modalRoot: document.getElementById("game-modal"),
     modalTitle: document.getElementById("modal-title"),
@@ -369,7 +369,7 @@ function update(deltaMs) {
     }
 
     updateCamera();
-    updateHud();
+    updateInfoBox();
 }
 
 function updateMovement(deltaMs) {
@@ -444,12 +444,73 @@ function updateCamera() {
     refs.world.style.transform = `translate(${-state.cameraX}px, ${-state.cameraY}px)`;
 }
 
-function updateHud() {
-    refs.hud.textContent = [
-        `Tile: (${state.player.tileX}, ${state.player.tileY})`,
+function updateInfoBox() {
+    const facingTile = getFacingTileCoordinates();
+    const isFacingInsideMap = isInsideMap(facingTile.x, facingTile.y);
+    const isFacingBlocked = !isFacingInsideMap || isSolidTile(facingTile.x, facingTile.y);
+    const interactableTriggers = getAvailableInteractTriggersAt(facingTile.x, facingTile.y);
+    const actionKinds = Array.from(new Set(interactableTriggers.map((trigger) => trigger.action.kind)));
+
+    const facingStatus = isFacingInsideMap
+        ? `(${facingTile.x}, ${facingTile.y})`
+        : `(${facingTile.x}, ${facingTile.y}) outside map`;
+
+    const interactStatus = interactableTriggers.length > 0
+        ? `Yes (${actionKinds.join(", ")})`
+        : "No";
+
+    const blockedStatus = isFacingBlocked ? "Yes" : "No";
+
+    refs.gameInfo.textContent = [
+        `Position: (${state.player.tileX}, ${state.player.tileY})`,
         `Facing: ${state.player.facing}`,
+        `Looking at: ${facingStatus}`,
+        `Tile ahead blocked: ${blockedStatus}`,
+        `Interactable: ${interactStatus}`,
         `Scale: ${state.currentScale}x`
     ].join("\n");
+}
+
+function getFacingTileCoordinates() {
+    const vector = DIRECTION_VECTORS[state.player.facing];
+    return {
+        x: state.player.tileX + vector.dx,
+        y: state.player.tileY + vector.dy
+    };
+}
+
+function getAvailableInteractTriggersAt(tileX, tileY) {
+    if (!Array.isArray(GAME_CONFIG.triggers)) {
+        return [];
+    }
+
+    const consumedIds = state.triggerEngine
+        ? new Set(state.triggerEngine.getConsumedTriggerIds())
+        : new Set();
+
+    return GAME_CONFIG.triggers.filter((trigger) => {
+        if (!trigger || typeof trigger !== "object") {
+            return false;
+        }
+
+        if (trigger.type !== "onInteractCell") {
+            return false;
+        }
+
+        if (trigger.x !== tileX || trigger.y !== tileY) {
+            return false;
+        }
+
+        if (!trigger.action || typeof trigger.action.kind !== "string") {
+            return false;
+        }
+
+        if (trigger.once === true && consumedIds.has(trigger.id)) {
+            return false;
+        }
+
+        return true;
+    });
 }
 
 function render() {

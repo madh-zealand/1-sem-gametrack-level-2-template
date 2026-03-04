@@ -16,6 +16,7 @@ Beginner-friendly top-down game template for Level 2 World Building.
 - [x] Reusable modal with ESC and close button
 - [x] Basic sound system with graceful warnings
 - [x] Sprite sheet support for up/down/left/right (single frame or multi-frame)
+- [x] Side-panel live info box (position, facing tile, and interactable tile hints)
 
 ## Run Locally
 
