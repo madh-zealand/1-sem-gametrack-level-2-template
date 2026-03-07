@@ -5,6 +5,7 @@ const SUPPORTED_ACTION_KINDS = new Set([
     "openModalVideo",
     "openModalHtml",
     "teleport",
+    "makePassable",
     "giveItem",
     "removeItem",
     "changeStat",

@@ -61,6 +61,7 @@ const state = {
     deferredEnterTrigger: null,
     fatalError: false,
     triggerSprites: new Map(),
+    preservedTriggerSpriteIds: new Set(),
     isTeleporting: false,
     teleportEffect: {
         active: false,
@@ -383,6 +384,10 @@ function addSolidTile(tileX, tileY) {
     state.solidTileSet.add(tileKey(tileX, tileY));
 }
 
+function removeSolidTile(tileX, tileY) {
+    state.solidTileSet.delete(tileKey(tileX, tileY));
+}
+
 function applyViewportSize() {
     refs.viewport.style.width = `${GAME_CONFIG.camera.widthPx}px`;
     refs.viewport.style.height = `${GAME_CONFIG.camera.heightPx}px`;
@@ -410,6 +415,7 @@ function setupTeleportEffect() {
 function buildTriggerSprites() {
     refs.triggerLayer.innerHTML = "";
     state.triggerSprites.clear();
+    state.preservedTriggerSpriteIds.clear();
 
     if (!Array.isArray(GAME_CONFIG.triggers)) {
         return;
@@ -435,35 +441,7 @@ function buildTriggerSprites() {
             continue;
         }
 
-        const sprite = spriteConfig.mode === "sheet"
-            ? document.createElement("div")
-            : document.createElement("img");
-        sprite.className = "trigger-sprite";
-        if (spriteConfig.mode === "sheet") {
-            sprite.style.backgroundImage = `url("${spriteConfig.src}")`;
-        }
-        else {
-            sprite.src = spriteConfig.src;
-            sprite.alt = "";
-        }
-        sprite.style.width = `${GAME_CONFIG.tileSize}px`;
-        sprite.style.height = `${GAME_CONFIG.tileSize}px`;
-        sprite.style.left = `${trigger.x * GAME_CONFIG.tileSize}px`;
-        sprite.style.top = `${trigger.y * GAME_CONFIG.tileSize}px`;
-
-        refs.triggerLayer.appendChild(sprite);
-
-        if (typeof trigger.id === "string" && trigger.id.trim() !== "") {
-            state.triggerSprites.set(trigger.id, {
-                element: sprite,
-                frames: spriteConfig.frames,
-                speed: spriteConfig.speed,
-                startTime: performance.now(),
-                mode: spriteConfig.mode
-            });
-        }
-
-        preloadSpriteImage(spriteConfig.src, trigger.id);
+        setTriggerSprite(trigger.id, trigger.sprite);
     }
 }
 
@@ -511,6 +489,83 @@ function resolveTriggerSpriteConfig(trigger) {
     return { src, frames, speed, mode, isAnimatedImage: isGif };
 }
 
+function getTriggerById(triggerId) {
+    if (typeof triggerId !== "string" || triggerId.trim() === "") {
+        return null;
+    }
+
+    if (!Array.isArray(GAME_CONFIG.triggers)) {
+        return null;
+    }
+
+    return GAME_CONFIG.triggers.find((trigger) => trigger?.id === triggerId) || null;
+}
+
+function setTriggerSprite(triggerId, spriteValue) {
+    const trigger = getTriggerById(triggerId);
+    if (!trigger) {
+        console.warn(`[triggers] Unknown trigger id "${String(triggerId)}" for sprite update.`);
+        return false;
+    }
+
+    const currentEntry = state.triggerSprites.get(triggerId);
+    if (currentEntry?.element) {
+        currentEntry.element.remove();
+        state.triggerSprites.delete(triggerId);
+    }
+
+    const spriteConfig = resolveTriggerSpriteConfig({ sprite: spriteValue });
+    if (!spriteConfig) {
+        return true;
+    }
+
+    if (!Number.isInteger(trigger.x) || !Number.isInteger(trigger.y)) {
+        console.warn(`[triggers] Trigger "${triggerId}" needs integer x/y coordinates for sprite updates.`);
+        return false;
+    }
+
+    if (!isInsideMap(trigger.x, trigger.y)) {
+        console.warn(`[triggers] Trigger "${triggerId}" is outside map bounds for sprite updates.`);
+        return false;
+    }
+
+    const sprite = createTriggerSpriteElement(trigger, spriteConfig);
+    refs.triggerLayer.appendChild(sprite);
+    state.triggerSprites.set(triggerId, {
+        element: sprite,
+        frames: spriteConfig.frames,
+        speed: spriteConfig.speed,
+        startTime: performance.now(),
+        mode: spriteConfig.mode
+    });
+
+    preloadSpriteImage(spriteConfig.src, triggerId);
+    return true;
+}
+
+function createTriggerSpriteElement(trigger, spriteConfig) {
+    const sprite = spriteConfig.mode === "sheet"
+        ? document.createElement("div")
+        : document.createElement("img");
+
+    sprite.className = "trigger-sprite";
+
+    if (spriteConfig.mode === "sheet") {
+        sprite.style.backgroundImage = `url("${spriteConfig.src}")`;
+    }
+    else {
+        sprite.src = spriteConfig.src;
+        sprite.alt = "";
+    }
+
+    sprite.style.width = `${GAME_CONFIG.tileSize}px`;
+    sprite.style.height = `${GAME_CONFIG.tileSize}px`;
+    sprite.style.left = `${trigger.x * GAME_CONFIG.tileSize}px`;
+    sprite.style.top = `${trigger.y * GAME_CONFIG.tileSize}px`;
+
+    return sprite;
+}
+
 function isAnimatedGifSource(src) {
     return /\.gif(\?.*)?$/i.test(src);
 }
@@ -526,6 +581,10 @@ function preloadSpriteImage(src, triggerId) {
 
 function handleTriggerConsumed(trigger) {
     if (!trigger || typeof trigger !== "object") {
+        return;
+    }
+
+    if (state.preservedTriggerSpriteIds.has(trigger.id)) {
         return;
     }
 
@@ -1039,6 +1098,8 @@ function executeTriggerAction(action, context = {}) {
             return formatTriggerExecutionResult(executeOpenHtmlAction(resolvedAction), resolution.shouldConsume);
         case "teleport":
             return formatTriggerExecutionResult(executeTeleportAction(resolvedAction), resolution.shouldConsume);
+        case "makePassable":
+            return formatTriggerExecutionResult(executeMakePassableAction(resolvedAction, context), resolution.shouldConsume);
         case "giveItem":
             return formatTriggerExecutionResult(executeGiveItemAction(resolvedAction), resolution.shouldConsume);
         case "removeItem":
@@ -1169,6 +1230,47 @@ function executePlaySoundAction(action) {
     }
 
     return state.audio.playSound(soundKey);
+}
+
+function executeMakePassableAction(action, context = {}) {
+    const targetTriggerId = typeof action.triggerId === "string" && action.triggerId.trim() !== ""
+        ? action.triggerId
+        : context.trigger?.id;
+
+    if (typeof targetTriggerId !== "string" || targetTriggerId.trim() === "") {
+        console.warn("[triggers] makePassable action needs a triggerId or must run from a trigger with an id.");
+        return false;
+    }
+
+    const trigger = getTriggerById(targetTriggerId);
+    if (!trigger) {
+        console.warn(`[triggers] makePassable could not find trigger "${targetTriggerId}".`);
+        return false;
+    }
+
+    if (!Number.isInteger(trigger.x) || !Number.isInteger(trigger.y)) {
+        console.warn(`[triggers] makePassable trigger "${targetTriggerId}" needs integer x/y coordinates.`);
+        return false;
+    }
+
+    removeSolidTile(trigger.x, trigger.y);
+
+    if (Object.prototype.hasOwnProperty.call(action, "passableSprite")) {
+        if (action.passableSprite === null || action.passableSprite === false || action.passableSprite === "") {
+            state.preservedTriggerSpriteIds.delete(targetTriggerId);
+            setTriggerSprite(targetTriggerId, null);
+        }
+        else {
+            state.preservedTriggerSpriteIds.add(targetTriggerId);
+            setTriggerSprite(targetTriggerId, action.passableSprite);
+        }
+    }
+    else {
+        state.preservedTriggerSpriteIds.delete(targetTriggerId);
+        setTriggerSprite(targetTriggerId, null);
+    }
+
+    return true;
 }
 
 function executeGiveItemAction(action) {

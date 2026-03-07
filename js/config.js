@@ -82,6 +82,7 @@ export const GAME_CONFIG = {
     // - sprite: { src: "assets/sprites/portal.png", frames: 4, speed: 150 } (spritesheet)
     // - conditions: [{ scope: "items", key: "coin", op: ">=", value: 1 }]
     // - elseAction: { kind: "openModalText", title: "...", text: "..." }
+    // - makePassable action can remove collision and optionally swap to passableSprite
     triggers: [
         {
             id: "coin_1",
@@ -206,15 +207,15 @@ export const GAME_CONFIG = {
             type: "onInteractCell",
             x: 1,
             y: 7,
+            once: true,
             isSolid: true,
             sprite: "assets/sprites/door_pink.png",
             conditions: [
                 { scope: "items", key: "key_pink", op: ">=", value: 1 }
             ],
             action: {
-                kind: "openModalText",
-                title: "You opened the door!",
-                text: "You used the pink key to open this door. Congrats on finding the secret pink key trigger and using it correctly in the conditions for this door trigger!"
+                kind: "makePassable",
+                passableSprite: "assets/sprites/door_pink_open.png",
             },
             elseAction: {
                 kind: "openModalText",
@@ -230,7 +231,7 @@ export const GAME_CONFIG = {
             isSolid: true,
             sprite: "assets/sprites/sign.png",
             conditions: [
-                { scope: "items", key: "coin", op: ">=", value: 1 }
+                { scope: "stats", key: "health", op: "<=", value: 1 }
             ],
             action: {
                 kind: "openModalHtml",
@@ -240,7 +241,7 @@ export const GAME_CONFIG = {
             elseAction: {
                 kind: "openModalText",
                 title: "Village Sign",
-                text: "The sign slot takes 1 coin before it lights up."
+                text: "You can only view this if you're almost dead!"
             }
         },
         {
@@ -263,6 +264,17 @@ export const GAME_CONFIG = {
             action: {
                 kind: "playSound",
                 soundKey: "teleport"
+            }
+        },
+        {
+            id: "portal_left_damage",
+            type: "onEnterCell",
+            x: 8,
+            y: 3,
+            action: {
+                kind: "changeStat",
+                statKey: "health",
+                amount: -1,
             }
         },
         {

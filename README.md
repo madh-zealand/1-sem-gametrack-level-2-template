@@ -368,6 +368,42 @@ Teleport is useful for:
 - Secret passages
 - Entering buildings
 
+#### `makePassable`
+
+Makes a trigger-based object passable by removing its collision and changing its sprite.
+
+Basic example:
+
+```js
+action: {
+    kind: "makePassable"
+}
+```
+
+Target another trigger by id:
+
+```js
+action: {
+    kind: "makePassable",
+    triggerId: "door_pink"
+}
+```
+
+Show a different sprite after becoming passable:
+
+```js
+action: {
+    kind: "makePassable",
+    passableSprite: "assets/sprites/door_open.png"
+}
+```
+
+Notes:
+
+- If `triggerId` is omitted, the action changes the trigger it is running on.
+- If `passableSprite` is omitted, the old sprite is removed.
+- This is best used together with `once: true` on the object trigger.
+
 #### `giveItem`
 
 Adds to an item count in `playerState.items`.
