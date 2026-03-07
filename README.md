@@ -1,153 +1,589 @@
-﻿# Level 2 Top-Down Template
+# Level 2 Top-Down Game Template
 
-Beginner-friendly top-down game template for Level 2 World Building.
+This project is a beginner-friendly top-down game engine built with HTML, CSS, and vanilla JavaScript.
 
-## Implemented Status
+Most game building happens in [js/config.js](C:/Code/1sem-spillinje/1-sem-gametrack-level-2-template/js/config.js). You can change the map, player start position, collisions, sounds, and triggers without editing the engine code.
 
-- [x] Tile-based movement on a 32x32 grid
-- [x] Smooth movement with exact grid snapping
-- [x] No diagonal movement
-- [x] Camera follows player and clamps to map bounds
-- [x] Configurable camera size and map size
-- [x] Integer-only pixel scaling (no smoothing)
-- [x] Solid tile collision from config list
-- [x] Trigger system (`onEnterCell`, `onInteractCell`)
-- [x] Trigger actions (`playSound`, `openModalText`, `openModalVideo`, `openModalHtml`, `teleport`)
-- [x] Reusable modal with ESC and close button
-- [x] Basic sound system with graceful warnings
-- [x] Sprite sheet support for up/down/left/right (single frame or multi-frame)
-- [x] Side-panel live info box (position, facing tile, and interactable tile hints)
+## How the engine works
 
-## Run Locally
+The game world is tile-based:
 
-Use a local web server (not `file://`).
+- Every tile is `32x32` pixels.
+- The player also uses `32x32` frames.
+- Movement is smooth, but the player always snaps exactly to the grid.
+- Releasing a movement key mid-step still finishes the current tile move.
+- Pressing a different direction briefly turns the player first, then moves if the key is held.
+- The camera follows the player and stays inside the map bounds.
 
-Example options:
+The engine is built around three editable layers:
 
-```bash
-python -m http.server 4173
-```
+1. The map image in `assets/map/`
+2. Collision data in `solidTiles`
+3. Event logic in `triggers`
 
-Then open `http://127.0.0.1:4173`.
+## Where to edit things
 
-## Controls
+### Main game data
 
-- Move: Arrow keys or WASD
-- Interact: Space or Enter
-- Close modal: Escape
+Use [js/config.js](C:/Code/1sem-spillinje/1-sem-gametrack-level-2-template/js/config.js) for:
 
-## Main Files
-
-- `index.html`
-- `css/variables.css`
-- `css/style.css`
-- `js/config.js` (main student editing file)
-- `js/game.js`
-- `js/triggers.js`
-- `js/modal.js`
-- `js/audio.js`
-- `content/modals.js`
-
-## Edit Gameplay Without Engine Changes
-
-Most edits should be in `js/config.js`:
-
-- `map.widthTiles`, `map.heightTiles`
+- `map.imageSrc`, `map.widthTiles`, `map.heightTiles`
 - `camera.widthPx`, `camera.heightPx`
 - `player.startTile`
-- `player.directions` (sprite sheet rows and frame counts)
+- `player.moveDurationMs`
+- `player.spriteSheetSrc`
+- `player.frameWidth`, `player.frameHeight`
+- `player.directions`
+- `audioEvents`
+- `sounds`
 - `solidTiles`
 - `triggers`
-- `audioEvents` and `sounds`
 
-## Add Your First Trigger
+### Reusable modal content
 
-1. Open `js/config.js`.
-2. Find `triggers: [...]`.
-3. Add a new trigger object:
+Use [content/modals.js](C:/Code/1sem-spillinje/1-sem-gametrack-level-2-template/content/modals.js) when you want:
+
+- Styled HTML popups
+- Reusable video entries
+- Custom modal sizes for specific content
+
+### Visual styling
+
+Use these files when changing the interface:
+
+- [css/style.css](C:/Code/1sem-spillinje/1-sem-gametrack-level-2-template/css/style.css) for the main layout, viewport, sprites, and modal shell
+- [css/variables.css](C:/Code/1sem-spillinje/1-sem-gametrack-level-2-template/css/variables.css) for colors, spacing, radius, and text sizes
+- [css/custom-content.css](C:/Code/1sem-spillinje/1-sem-gametrack-level-2-template/css/custom-content.css) for styling custom HTML modal content
+
+## Building a map
+
+The map is a single image. The engine checks that the image size matches the tile counts:
+
+- Width must equal `map.widthTiles * tileSize`
+- Height must equal `map.heightTiles * tileSize`
+
+Example:
 
 ```js
-{
-    id: "my_first_trigger",
-    type: "onEnterCell",
-    x: 5,
-    y: 4,
-    once: true,
-    action: {
-        kind: "openModalText",
-        title: "Hello",
-        text: "You stepped on tile (5,4)."
+map: {
+    imageSrc: "assets/map/my_map.png",
+    widthTiles: 50,
+    heightTiles: 30
+}
+```
+
+If the dimensions are wrong, the game stops at startup with a clear error message.
+
+## Setting up the player
+
+The player uses one spritesheet with rows for directions.
+
+Example:
+
+```js
+player: {
+    startTile: { x: 2, y: 2 },
+    moveDurationMs: 150,
+    defaultFacing: "right",
+    spriteSheetSrc: "assets/player/player_sheet.png",
+    frameWidth: 32,
+    frameHeight: 32,
+    directions: {
+        up: { row: 0, frames: 4 },
+        down: { row: 1, frames: 4 },
+        left: { row: 2, frames: 4 },
+        right: { row: 3, frames: 4 }
     }
 }
 ```
 
-4. Save and refresh the browser.
+Notes:
 
-For interact triggers, use `type: "onInteractCell"`. The player must face the target tile and press Space or Enter.
+- `row` is the row number in the spritesheet.
+- `frames` is how many frames exist for that direction.
+- Set `frames: 1` if you want a still frame in that direction.
+- The engine validates that the image is large enough for the configured rows and frames.
 
-## Replace Assets
+## Blocking movement with `solidTiles`
 
-### Map
+`solidTiles` defines map collision. The player cannot walk onto these tiles.
 
-1. Replace `assets/map/map.png`.
-2. Keep tile size logic at 32x32.
-3. Make sure map image dimensions match:
-   - width = `map.widthTiles * tileSize`
-   - height = `map.heightTiles * tileSize`
+Use a single tile:
 
-If dimensions do not match, startup fails with a clear error.
+```js
+{ x: 10, y: 4 }
+```
 
-### Player sprite sheet
+Use a line or rectangle:
 
-1. Replace `assets/player/player_sheet.png`.
-2. Sheet uses direction rows in `js/config.js`:
-   - `up`, `down`, `left`, `right`
-3. Each frame is `32x32` by default.
-4. Keep `frames: 1` for no animation, or set larger values for multi-frame movement.
+```js
+{ x1: 8, y1: 4, x2: 12, y2: 4 }
+```
 
-### Sound and video
+Example:
 
-- Replace files in `assets/sfx/` and `assets/video/`.
-- Keep paths aligned with `js/config.js` and `content/modals.js`.
+```js
+solidTiles: [
+    { x: 4, y: 5 },
+    { x1: 8, y1: 2, x2: 8, y2: 8 },
+    { x1: 12, y1: 10, x2: 18, y2: 14 }
+]
+```
 
-## Trigger Notes
+This is useful for:
 
-- Multiple triggers on the same tile/event run in array order.
-- `once: true` triggers are consumed after successful execution.
-- Unknown/invalid triggers are skipped with warnings.
-- Triggers may add `isSolid: true` to make the trigger tile non-walkable (best used with `onInteractCell`).
-- Triggers may add `sprite: "assets/sprites/your_image.png"` to draw a 32x32 image on that tile.
-- Spritesheets are supported: `sprite: { src: "...", frames: 4, speed: 150 }` (frames across a single row).
-- Animated GIFs are supported: `sprite: "assets/sprites/portal.gif"`.
-- If a trigger has `sprite` and `once: true`, the sprite is removed after the trigger runs successfully.
-- Modal actions can set `maxWidth` and `maxHeight` (for example `"900px"` or `"80vh"`).
-- `content/modals.js` entries can also define `maxWidth` and `maxHeight` for reusable modal sizing.
+- Walls
+- Water
+- Furniture
+- Buildings
+- Edges the player should not cross
 
-### Teleport effect sprite
+## Trigger system
 
-Teleport actions can optionally add a spritesheet effect that plays forward at the start tile and backward at the target:
+Triggers are the main way to build game logic. Every trigger lives in the `triggers` array in [js/config.js](C:/Code/1sem-spillinje/1-sem-gametrack-level-2-template/js/config.js).
+
+Each trigger needs:
+
+- `id`
+- `type`
+- `x`
+- `y`
+- `action`
+
+Optional keys:
+
+- `once`
+- `isSolid`
+- `sprite`
+
+Basic example:
+
+```js
+{
+    id: "welcome_tile",
+    type: "onEnterCell",
+    x: 3,
+    y: 2,
+    once: true,
+    action: {
+        kind: "openModalText",
+        title: "Welcome",
+        text: "This is the first room."
+    }
+}
+```
+
+### Trigger types
+
+#### `onEnterCell`
+
+Runs when the player steps onto the trigger tile.
+
+Good for:
+
+- Area messages
+- Damage zones
+- Pickups
+- Teleports
+- Ambient sounds
+
+#### `onInteractCell`
+
+Runs when the player faces a tile and presses `Space` or `Enter`.
+
+Good for:
+
+- Signs
+- NPC interaction tiles
+- Doors
+- Computers
+- Treasure chests
+
+If you want an interactable object to block movement, combine it with `isSolid: true`.
+
+Example:
+
+```js
+{
+    id: "sign_1",
+    type: "onInteractCell",
+    x: 10,
+    y: 3,
+    isSolid: true,
+    sprite: "assets/sprites/sign.png",
+    action: {
+        kind: "openModalHtml",
+        title: "Village Sign",
+        contentKey: "village_sign"
+    }
+}
+```
+
+### Trigger action types
+
+#### `playSound`
+
+Plays a sound by key from `sounds`.
+
+```js
+action: {
+    kind: "playSound",
+    soundKey: "teleport"
+}
+```
+
+#### `openModalText`
+
+Opens a simple text modal.
+
+```js
+action: {
+    kind: "openModalText",
+    title: "Hint",
+    text: "Try using the switch near the door."
+}
+```
+
+#### `openModalVideo`
+
+Opens a modal with a local video file. You can provide values directly or reuse an entry from `content/modals.js`.
+
+Direct example:
+
+```js
+action: {
+    kind: "openModalVideo",
+    title: "Intro",
+    src: "assets/video/intro.mp4",
+    videoType: "video/mp4",
+    description: "Opening cutscene"
+}
+```
+
+Reusable content example:
+
+```js
+action: {
+    kind: "openModalVideo",
+    contentKey: "intro_clip"
+}
+```
+
+#### `openModalHtml`
+
+Opens styled HTML content from [content/modals.js](C:/Code/1sem-spillinje/1-sem-gametrack-level-2-template/content/modals.js).
+
+```js
+action: {
+    kind: "openModalHtml",
+    title: "Notice Board",
+    contentKey: "village_sign"
+}
+```
+
+Use this for:
+
+- Styled quest cards
+- Dialogue layouts
+- Lore panels
+- Journal pages
+- Menus or fake UI screens
+
+#### `teleport`
+
+Moves the player to a new tile if the target is inside the map and not solid.
 
 ```js
 action: {
     kind: "teleport",
-    targetX: 10,
-    targetY: 5,
-    sprite: { src: "assets/sprites/portal_effect.png", frames: 4, speed: 150 }
+    targetX: 13,
+    targetY: 3,
+    sfx: "teleport"
 }
 ```
 
-For animated GIFs, use `sprite: "assets/sprites/portal_effect.gif"` and set `speed` (in ms) to control how long
-the effect stays visible.
+Teleport is useful for:
 
-## Collision Notes
+- Portals
+- Doors between rooms
+- Staircases
+- Secret passages
+- Entering buildings
 
-- `solidTiles` supports both:
-  - Single tile entries: `{ x: 10, y: 4 }`
-  - Filled range entries (line or rectangle): `{ x1: 8, y1: 4, x2: 12, y2: 4 }`
-- The player cannot move into solid tiles.
-- Map bounds are always non-walkable.
+## Trigger helper keys
 
-## Known Constraints
+### `once: true`
 
-- Integer-only scaling is used to preserve crisp pixels.
-- If the screen is smaller than the camera at 1x scale, the stage can overflow and scroll.
+The trigger only works once. If it succeeds, it is consumed and does not run again.
+
+Use it for:
+
+- Collectibles
+- One-time messages
+- First-time cutscenes
+- Single-use switches
+
+### `isSolid: true`
+
+Adds collision to that trigger tile.
+
+Use it for:
+
+- Signs
+- Computers
+- Lockers
+- Tables with interaction
+- Doors you want the player to face before interacting
+
+### `sprite`
+
+Draws a tile-sized visual on the map at the trigger position.
+
+Supported forms:
+
+Static image:
+
+```js
+sprite: "assets/sprites/sign.png"
+```
+
+Animated GIF:
+
+```js
+sprite: "assets/sprites/coin.gif"
+```
+
+Spritesheet animation:
+
+```js
+sprite: {
+    src: "assets/sprites/portal_overlay.png",
+    frames: 4,
+    speed: 150
+}
+```
+
+Notes:
+
+- Spritesheet frames are read left-to-right on a single row.
+- Each frame is treated as one `32x32` tile.
+- `speed` is milliseconds per frame.
+- If a trigger has both `sprite` and `once: true`, the sprite disappears after the trigger succeeds.
+
+## Teleport effect sprites
+
+Teleport actions can also have an optional `sprite` key. This effect is drawn on top of the player:
+
+- It plays forward before the player disappears
+- The player is moved
+- It plays backward on the destination tile
+
+Example:
+
+```js
+action: {
+    kind: "teleport",
+    targetX: 20,
+    targetY: 8,
+    sfx: "teleport",
+    sprite: {
+        src: "assets/sprites/portal_action.png",
+        frames: 4,
+        speed: 150
+    }
+}
+```
+
+Notes:
+
+- The teleport effect sprite is optional.
+- While the teleport effect is playing, movement and interaction are temporarily locked.
+
+## Modal content workflow
+
+Use [content/modals.js](C:/Code/1sem-spillinje/1-sem-gametrack-level-2-template/content/modals.js) for reusable content entries.
+
+Example text-rich HTML entry:
+
+```js
+export const MODAL_CONTENT = {
+    village_sign: {
+        title: "Village Sign",
+        maxWidth: "90vw",
+        maxHeight: "90vh",
+        html: `
+            <article class="village-sign">
+                <h3>Welcome</h3>
+                <p>This town was built with trigger data.</p>
+            </article>
+        `
+    }
+};
+```
+
+Example video entry:
+
+```js
+intro_clip: {
+    title: "Intro Clip",
+    videoSrc: "assets/video/intro.mp4",
+    videoType: "video/mp4",
+    description: "Sample local video file"
+}
+```
+
+You can also set modal size per action or per content entry:
+
+```js
+maxWidth: "900px",
+maxHeight: "80vh"
+```
+
+## Sound system
+
+The sound system has two layers in [js/config.js](C:/Code/1sem-spillinje/1-sem-gametrack-level-2-template/js/config.js):
+
+- `sounds`: maps a sound key to a file path
+- `audioEvents`: maps built-in game events to a sound key
+
+Example:
+
+```js
+audioEvents: {
+    step: "step",
+    interact: "interact",
+    teleport: "teleport",
+    ui_open_modal: "ui_open_modal"
+},
+
+sounds: {
+    step: "assets/sfx/step.wav",
+    interact: "assets/sfx/interact.wav",
+    teleport: "assets/sfx/teleport.wav",
+    ui_open_modal: "assets/sfx/interact.wav"
+}
+```
+
+The engine already uses these event names:
+
+- `step`
+- `interact`
+- `teleport`
+- `ui_open_modal`
+
+You can also play sounds manually through triggers with `playSound`.
+
+## Common game-building patterns
+
+### Signpost
+
+```js
+{
+    id: "forest_sign",
+    type: "onInteractCell",
+    x: 14,
+    y: 6,
+    isSolid: true,
+    sprite: "assets/sprites/sign.png",
+    action: {
+        kind: "openModalText",
+        title: "Forest Path",
+        text: "North: Village  South: River"
+    }
+}
+```
+
+### One-time collectible
+
+```js
+{
+    id: "coin_1",
+    type: "onEnterCell",
+    x: 7,
+    y: 9,
+    once: true,
+    sprite: "assets/sprites/coin.gif",
+    action: {
+        kind: "playSound",
+        soundKey: "interact"
+    }
+}
+```
+
+### Portal pair
+
+```js
+{
+    id: "portal_a",
+    type: "onEnterCell",
+    x: 8,
+    y: 3,
+    sprite: {
+        src: "assets/sprites/portal_overlay.png",
+        frames: 4,
+        speed: 150
+    },
+    action: {
+        kind: "teleport",
+        targetX: 20,
+        targetY: 12,
+        sfx: "teleport",
+        sprite: {
+            src: "assets/sprites/portal_action.png",
+            frames: 4,
+            speed: 150
+        }
+    }
+}
+```
+
+### Information hotspot with custom layout
+
+```js
+{
+    id: "museum_terminal",
+    type: "onInteractCell",
+    x: 18,
+    y: 10,
+    isSolid: true,
+    action: {
+        kind: "openModalHtml",
+        contentKey: "museum_terminal"
+    }
+}
+```
+
+## Engine behavior and safety rules
+
+The engine is designed to fail safely for beginner editing:
+
+- Invalid triggers are skipped with console warnings
+- Unknown trigger types and action kinds are skipped
+- Missing modal content does not crash the game
+- Missing sounds warn instead of crashing
+- Invalid teleport targets are blocked safely
+- Map, player start, and sprite sheet size are validated at startup
+
+## File overview
+
+- [index.html](C:/Code/1sem-spillinje/1-sem-gametrack-level-2-template/index.html): page structure, viewport, side panel, and modal root
+- [js/config.js](C:/Code/1sem-spillinje/1-sem-gametrack-level-2-template/js/config.js): main editable game setup
+- [js/game.js](C:/Code/1sem-spillinje/1-sem-gametrack-level-2-template/js/game.js): movement, camera, rendering, triggers, teleport effects
+- [js/triggers.js](C:/Code/1sem-spillinje/1-sem-gametrack-level-2-template/js/triggers.js): trigger validation and execution rules
+- [js/modal.js](C:/Code/1sem-spillinje/1-sem-gametrack-level-2-template/js/modal.js): modal open/close behavior
+- [js/audio.js](C:/Code/1sem-spillinje/1-sem-gametrack-level-2-template/js/audio.js): sound loading and playback
+- [content/modals.js](C:/Code/1sem-spillinje/1-sem-gametrack-level-2-template/content/modals.js): reusable HTML and video modal content
+- [css/custom-content.css](C:/Code/1sem-spillinje/1-sem-gametrack-level-2-template/css/custom-content.css): styles for custom modal markup
+
+## Suggested workflow for making a game
+
+1. Replace the map image and set the correct map size.
+2. Set the player start tile and player spritesheet rows.
+3. Mark blocked areas in `solidTiles`.
+4. Add `onInteractCell` triggers for objects like signs, doors, and terminals.
+5. Add `onEnterCell` triggers for pickups, portals, and zone events.
+6. Move bigger text or custom layouts into `content/modals.js`.
+7. Add sound keys and connect them to actions.
+8. Playtest and use the in-game info panel to inspect facing direction and interactable tiles.
+
+This template works best when you treat `js/config.js` as your game data file and only touch engine files when you want to add a brand new mechanic.
