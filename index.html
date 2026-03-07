@@ -30,9 +30,21 @@
         </section>
 
         <aside class="side-panel" aria-label="Instructions">
-            <section class="info-box" aria-label="Game information">
-                <h2>Game Info</h2>
-                <div id="game-info" class="game-info" aria-live="polite"></div>
+            <section class="info-box" aria-label="Debug controls">
+                <button id="debug-toggle" class="debug-toggle" type="button" aria-expanded="false" aria-controls="debug-panel">
+                    Debug
+                </button>
+                <div id="debug-panel" class="debug-panel hidden">
+                    <div id="game-info" class="game-info" aria-live="polite"></div>
+                </div>
+            </section>
+            <section class="info-box" aria-label="Player items">
+                <h2>Items</h2>
+                <div id="items-info" class="game-info" aria-live="polite"></div>
+            </section>
+            <section class="info-box" aria-label="Player stats">
+                <h2>Stats</h2>
+                <div id="stats-info" class="game-info" aria-live="polite"></div>
             </section>
             <h2>Controls</h2>
             <ul>
@@ -40,8 +52,6 @@
                 <li>Interact: Space or Enter</li>
                 <li>Close modal: Escape</li>
             </ul>
-            <h2>Notes</h2>
-            <p>Use a local server (for example Live Server) to run the project.</p>
         </aside>
     </main>
 </div>

@@ -16,9 +16,9 @@ export const GAME_CONFIG = {
     },
 
     player: {
-        startTile: { x: 2, y: 2 },
+        startTile: { x: 1, y: 1 },
         moveDurationMs: 150,
-        defaultFacing: "right",
+        defaultFacing: "down",
         spriteSheetSrc: "assets/player/player_sheet.png",
         frameWidth: 32,
         frameHeight: 32,
@@ -65,6 +65,11 @@ export const GAME_CONFIG = {
     // - Single tile: { x: 10, y: 4 }
     // - Filled range (line or rectangle): { x1: 8, y1: 4, x2: 12, y2: 4 }
     solidTiles: [
+        { x1: 0, y1: 0, x2: 2, y2: 0 },
+        { x1: 0, y1: 1, x2: 0, y2: 7 },
+        { x1: 2, y1: 1, x2: 2, y2: 4 },
+        { x1: 2, y1: 6, x2: 2, y2: 7 },
+        { x1: 3, y1: 4, x2: 4, y2: 6 },
         { x: 8, y: 2 }, { x: 12, y: 2 },
         { x: 9, y: 3 }, { x: 11, y: 3 },
         { x1: 8, y1: 4, x2: 12, y2: 4 },
@@ -81,14 +86,140 @@ export const GAME_CONFIG = {
         {
             id: "coin_1",
             type: "onEnterCell",
-            x: 3,
+            x: 1,
             y: 2,
             once: true,
             sprite: "assets/sprites/coin.gif",
             action: {
                 kind: "giveItem",
                 itemKey: "coin",
-                amount: 1
+                amount: 1,
+            },
+        },
+        {
+            id: "coin_1_sound",
+            type: "onEnterCell",
+            x: 1,
+            y: 2,
+            once: true,
+            action: {
+                kind: "playSound",
+                soundKey: "interact",
+            },
+        },
+        {
+            id: "picked_up_coin",
+            type: "onEnterCell",
+            x: 1,
+            y: 3,
+            once: true,
+            sprite: "assets/sprites/question.png",
+            action: {
+                kind: "openModalText",
+                title: "Wow, did you see that!",
+                text: "You picked up a coin! It was defined as a trigger in the config.js, try to find it.",
+            }
+        },
+        {
+            id: "coin_sign",
+            type: "onInteractCell",
+            x: 3,
+            y: 5,
+            isSolid: true,
+            sprite: "assets/sprites/sign.png",
+            conditions: [
+                { scope: "items", key: "coin", op: ">=", value: 2 }
+            ],
+            action: {
+                kind: "openModalHtml",
+                title: "Coin Sign",
+                contentKey: "coin_sign"
+            },
+            elseAction: {
+                kind: "openModalText",
+                title: "Oh no!!!",
+                text: "This sign requires at least 2 coins. It says so in the 'conditions' for the trigger for this sign."
+            }
+        },
+        {
+            id: "coin_2",
+            type: "onEnterCell",
+            x: 1,
+            y: 6,
+            once: true,
+            sprite: "assets/sprites/coin.gif",
+            action: {
+                kind: "giveItem",
+                itemKey: "coin",
+                amount: 1,
+            },
+        },
+        {
+            id: "coin_2_sound",
+            type: "onEnterCell",
+            x: 1,
+            y: 6,
+            once: true,
+            action: {
+                kind: "playSound",
+                soundKey: "interact",
+            },
+        },
+        {
+            id: "key_pink",
+            type: "onInteractCell",
+            x: 1,
+            y: 3,
+            once: true,
+            action: {
+                kind: "giveItem",
+                itemKey: "key_pink",
+                amount: 1,
+            },
+        },
+        {
+            id: "key_pink_sound",
+            type: "onInteractCell",
+            x: 1,
+            y: 3,
+            once: true,
+            action: {
+                kind: "playSound",
+                soundKey: "interact",
+            },
+        },
+        {
+            id: "key_pink_text",
+            type: "onInteractCell",
+            x: 1,
+            y: 3,
+            once: true,
+            sprite: "assets/sprites/question.png",
+            action: {
+                kind: "openModalText",
+                title: "Good catch!",
+                text: "You found the super secret pink key! Now you can open the door with it."
+            },
+        },
+        {
+            id: "door_pink",
+            type: "onInteractCell",
+            x: 1,
+            y: 7,
+            isSolid: true,
+            sprite: "assets/sprites/door_pink.png",
+            conditions: [
+                { scope: "items", key: "key_pink", op: ">=", value: 1 }
+            ],
+            action: {
+                kind: "openModalText",
+                title: "You opened the door!",
+                text: "You used the pink key to open this door. Congrats on finding the secret pink key trigger and using it correctly in the conditions for this door trigger!"
+            },
+            elseAction: {
+                kind: "openModalText",
+                title: "Locked!",
+                text: "This door is locked with a pink key (original i know). Take a closer look at the question mark."
             }
         },
         {

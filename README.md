@@ -718,6 +718,6 @@ The engine is designed to fail safely for beginner editing:
 5. Add `onEnterCell` triggers for pickups, portals, and zone events.
 6. Move bigger text or custom layouts into `content/modals.js`.
 7. Add sound keys and connect them to actions.
-8. Playtest and use the in-game info panel to inspect facing direction and interactable tiles.
+8. Playtest and use the Debug button for movement/interaction info, while the Items and Stats boxes show live player state.
 
 This template works best when you treat `js/config.js` as your game data file and only touch engine files when you want to add a brand new mechanic.

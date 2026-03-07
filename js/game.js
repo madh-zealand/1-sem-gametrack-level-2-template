@@ -35,7 +35,11 @@ const refs = {
     triggerLayer: document.getElementById("trigger-layer"),
     playerSprite: document.getElementById("player-sprite"),
     teleportEffect: document.getElementById("teleport-effect"),
+    debugToggle: document.getElementById("debug-toggle"),
+    debugPanel: document.getElementById("debug-panel"),
     gameInfo: document.getElementById("game-info"),
+    itemsInfo: document.getElementById("items-info"),
+    statsInfo: document.getElementById("stats-info"),
     fatalError: document.getElementById("fatal-error"),
     modalRoot: document.getElementById("game-modal"),
     modalTitle: document.getElementById("modal-title"),
@@ -52,6 +56,7 @@ const state = {
     currentScale: 1,
     cameraX: 0,
     cameraY: 0,
+    isDebugOpen: false,
     solidTileSet: new Set(),
     deferredEnterTrigger: null,
     fatalError: false,
@@ -112,6 +117,7 @@ async function boot() {
         setupTeleportEffect();
         buildTriggerSprites();
         setupPlayerSprite();
+        setupDebugControls();
         setupModalSystem();
         setupAudioSystem();
         setupTriggerSystem();
@@ -546,6 +552,20 @@ function setupPlayerSprite() {
     refs.playerSprite.style.backgroundImage = `url("${GAME_CONFIG.player.spriteSheetSrc}")`;
 }
 
+function setupDebugControls() {
+    updateDebugPanelVisibility();
+
+    refs.debugToggle.addEventListener("click", () => {
+        state.isDebugOpen = !state.isDebugOpen;
+        updateDebugPanelVisibility();
+    });
+}
+
+function updateDebugPanelVisibility() {
+    refs.debugPanel.classList.toggle("hidden", !state.isDebugOpen);
+    refs.debugToggle.setAttribute("aria-expanded", String(state.isDebugOpen));
+}
+
 function setupModalSystem() {
     state.modal = createModalController({
         modalRoot: refs.modalRoot,
@@ -711,8 +731,6 @@ function updateInfoBox() {
     const isFacingBlocked = !isFacingInsideMap || isSolidTile(facingTile.x, facingTile.y);
     const interactableTriggers = getAvailableInteractTriggersAt(facingTile.x, facingTile.y);
     const actionKinds = Array.from(new Set(interactableTriggers.map((trigger) => trigger.action.kind)));
-    const itemStatus = formatStateBucket(state.playerState.items);
-    const statStatus = formatStateBucket(state.playerState.stats);
 
     const facingStatus = isFacingInsideMap
         ? `(${facingTile.x}, ${facingTile.y})`
@@ -730,10 +748,11 @@ function updateInfoBox() {
         `Looking at: ${facingStatus}`,
         `Tile ahead blocked: ${blockedStatus}`,
         `Interactable: ${interactStatus}`,
-        `Items: ${itemStatus}`,
-        `Stats: ${statStatus}`,
         `Scale: ${state.currentScale}x`
     ].join("\n");
+
+    renderStateBucket(refs.itemsInfo, state.playerState.items, "No items");
+    renderStateBucket(refs.statsInfo, state.playerState.stats, "No stats");
 }
 
 function formatStateBucket(bucket) {
@@ -745,6 +764,47 @@ function formatStateBucket(bucket) {
     return entries
         .map(([key, value]) => `${key}=${value}`)
         .join(", ");
+}
+
+function renderStateBucket(targetElement, bucket, emptyLabel) {
+    targetElement.innerHTML = "";
+
+    const entries = Object.entries(bucket);
+    if (entries.length === 0) {
+        const emptyState = document.createElement("div");
+        emptyState.className = "state-empty";
+        emptyState.textContent = emptyLabel;
+        targetElement.appendChild(emptyState);
+        return;
+    }
+
+    const list = document.createElement("div");
+    list.className = "state-list";
+
+    for (const [key, value] of entries) {
+        const row = document.createElement("div");
+        row.className = "state-row";
+
+        const keyLabel = document.createElement("span");
+        keyLabel.className = "state-key";
+        keyLabel.textContent = formatStateKeyLabel(key);
+
+        const valueLabel = document.createElement("span");
+        valueLabel.className = "state-value";
+        valueLabel.textContent = String(value);
+
+        row.appendChild(keyLabel);
+        row.appendChild(valueLabel);
+        list.appendChild(row);
+    }
+
+    targetElement.appendChild(list);
+}
+
+function formatStateKeyLabel(key) {
+    return key
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function getFacingTileCoordinates() {
