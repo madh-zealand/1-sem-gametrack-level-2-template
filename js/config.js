@@ -36,6 +36,14 @@ export const GAME_CONFIG = {
             left: { row: 2, frames: 1 },
             right: { row: 3, frames: 1 },
         },
+
+        // Extra named animations can use any other row in the same sheet.
+        // Use these names from trigger actions with:
+        // { kind: "playPlayerAnimation", animationKey: "happy", loops: 2 }
+        animations: {
+            happy: { row: 4, frames: 2, speed: 180 },
+            sad: { row: 5, frames: 2, speed: 180 },
+        },
     },
 
     // Simple player data that triggers can read and change.
@@ -109,6 +117,7 @@ export const GAME_CONFIG = {
     //
     // Supported action kinds:
     // - playSound
+    // - playPlayerAnimation
     // - openModalText
     // - openModalVideo
     // - openModalHtml
@@ -123,6 +132,7 @@ export const GAME_CONFIG = {
     // { kind: "playSound", soundKey: "interact" }
     // { kind: "giveItem", itemKey: "coin", amount: 1 }
     // { kind: "changeStat", statKey: "health", amount: -1 }
+    // { kind: "playPlayerAnimation", animationKey: "happy", loops: 2 }
     // { kind: "openModalText", title: "Hello", text: "Welcome!" }
     // { kind: "teleport", targetX: 10, targetY: 4 }
     // { kind: "makePassable", passableSprite: null }
@@ -143,6 +153,11 @@ export const GAME_CONFIG = {
                     kind: "giveItem",
                     itemKey: "coin",
                     amount: 1,
+                },
+                {
+                    kind: "playPlayerAnimation",
+                    animationKey: "happy",
+                    loops: 4,
                 },
             ],
         },
@@ -198,6 +213,11 @@ export const GAME_CONFIG = {
                     kind: "giveItem",
                     itemKey: "coin",
                     amount: 1,
+                },
+                {
+                    kind: "playPlayerAnimation",
+                    animationKey: "sad",
+                    loops: 4,
                 },
             ],
         },

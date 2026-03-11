@@ -37,6 +37,7 @@ Use [js/config.js](C:/Code/1sem-spillinje/1-sem-gametrack-level-2-template/js/co
 - `player.spriteSheetSrc`
 - `player.frameWidth`, `player.frameHeight`
 - `player.directions`
+- `player.animations`
 - `playerState`
 - `audioEvents`
 - `sounds`
@@ -100,6 +101,10 @@ player: {
         down: { row: 1, frames: 4 },
         left: { row: 2, frames: 4 },
         right: { row: 3, frames: 4 }
+    },
+    animations: {
+        happy: { row: 4, frames: 2, speed: 180 },
+        sad: { row: 5, frames: 2, speed: 180 }
     }
 }
 ```
@@ -109,6 +114,8 @@ Notes:
 - `row` is the row number in the spritesheet.
 - `frames` is how many frames exist for that direction.
 - Set `frames: 1` if you want a still frame in that direction.
+- `animations` is optional and lets you name extra rows like `happy` or `sad`.
+- `speed` is milliseconds per frame for named extra animations.
 - The engine validates that the image is large enough for the configured rows and frames.
 
 ## Player state
@@ -318,6 +325,24 @@ Opens a simple text modal.
     text: "Try using the switch near the door."
 }
 ```
+
+#### `playPlayerAnimation`
+
+Plays one of the named entries from `player.animations`.
+
+```js
+{
+    kind: "playPlayerAnimation",
+    animationKey: "happy",
+    loops: 2
+}
+```
+
+Notes:
+
+- `animationKey` must match a name in `player.animations`.
+- `loops` is optional and defaults to `1`.
+- When the loops finish, the player returns to the normal facing/movement row.
 
 #### `openModalVideo`
 

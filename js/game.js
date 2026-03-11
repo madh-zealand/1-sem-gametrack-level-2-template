@@ -76,6 +76,14 @@ const state = {
         durationMs: 0,
         resolve: null,
     },
+    playerAnimation: {
+        active: false,
+        row: 0,
+        frames: 1,
+        speed: 150,
+        loops: 1,
+        startTime: 0,
+    },
 
     player: {
         tileX: 0,
@@ -294,6 +302,8 @@ function validateConfig(config) {
         }
     }
 
+    validatePlayerAnimationsConfig(config.player.animations, fail);
+
     if (!requiredDirections.includes(config.player.defaultFacing)) {
         fail("player.defaultFacing must be one of: up, down, left, right.");
     }
@@ -312,6 +322,58 @@ function validatePlayerStateConfig(playerState, fail) {
 
     validatePlayerStateBucket(playerState.items, "playerState.items", fail);
     validatePlayerStateBucket(playerState.stats, "playerState.stats", fail);
+}
+
+function validatePlayerAnimationsConfig(animations, fail) {
+    if (animations === undefined) {
+        return;
+    }
+
+    if (!animations || typeof animations !== "object" || Array.isArray(animations)) {
+        fail("player.animations must be an object when provided.");
+    }
+
+    for (const [animationKey, animationConfig] of Object.entries(animations)) {
+        validateSinglePlayerAnimationConfig(
+            animationConfig,
+            `player.animations.${animationKey}`,
+            fail,
+        );
+    }
+}
+
+function validateSinglePlayerAnimationConfig(animationConfig, label, fail) {
+    if (
+        !animationConfig ||
+        typeof animationConfig !== "object" ||
+        Array.isArray(animationConfig)
+    ) {
+        fail(`${label} must be an object.`);
+    }
+
+    if (
+        !Number.isInteger(animationConfig.row) ||
+        animationConfig.row < 0
+    ) {
+        fail(`${label}.row must be an integer >= 0.`);
+    }
+
+    if (
+        !Number.isInteger(animationConfig.frames) ||
+        animationConfig.frames < 1
+    ) {
+        fail(`${label}.frames must be an integer >= 1.`);
+    }
+
+    if (
+        animationConfig.speed !== undefined &&
+        (
+            !Number.isInteger(animationConfig.speed) ||
+            animationConfig.speed < 1
+        )
+    ) {
+        fail(`${label}.speed must be an integer >= 1 when provided.`);
+    }
 }
 
 function validatePlayerStateBucket(bucket, label, fail) {
@@ -1089,7 +1151,7 @@ function render(now = performance.now()) {
     updateTriggerSpriteFrames(now);
     updateTeleportEffect(now);
     refs.playerSprite.style.transform = `translate(${state.player.pixelX}px, ${state.player.pixelY}px)`;
-    updatePlayerSpriteFrame();
+    updatePlayerSpriteFrame(now);
 }
 
 function updateTeleportEffect(now) {
@@ -1156,7 +1218,19 @@ function finishTeleportEffect() {
     }
 }
 
-function updatePlayerSpriteFrame() {
+function updatePlayerSpriteFrame(now = performance.now()) {
+    const spriteFrame = getCurrentPlayerSpriteFrame(now);
+    const offsetX = -(spriteFrame.frameIndex * GAME_CONFIG.player.frameWidth);
+    const offsetY = -(spriteFrame.row * GAME_CONFIG.player.frameHeight);
+    refs.playerSprite.style.backgroundPosition = `${offsetX}px ${offsetY}px`;
+}
+
+function getCurrentPlayerSpriteFrame(now) {
+    const animationFrame = getActivePlayerAnimationFrame(now);
+    if (animationFrame) {
+        return animationFrame;
+    }
+
     const directionConfig = GAME_CONFIG.player.directions[state.player.facing];
     const frameCount = Math.max(1, directionConfig.frames);
 
@@ -1168,9 +1242,45 @@ function updatePlayerSpriteFrame() {
         );
     }
 
-    const offsetX = -(frameIndex * GAME_CONFIG.player.frameWidth);
-    const offsetY = -(directionConfig.row * GAME_CONFIG.player.frameHeight);
-    refs.playerSprite.style.backgroundPosition = `${offsetX}px ${offsetY}px`;
+    return {
+        row: directionConfig.row,
+        frameIndex,
+    };
+}
+
+function getActivePlayerAnimationFrame(now) {
+    const animationState = state.playerAnimation;
+    if (!animationState.active) {
+        return null;
+    }
+
+    const totalFrames = animationState.frames * animationState.loops;
+    const elapsedFrames = Math.floor(
+        (now - animationState.startTime) / animationState.speed,
+    );
+
+    if (elapsedFrames >= totalFrames) {
+        stopPlayerAnimation();
+        return null;
+    }
+
+    return {
+        row: animationState.row,
+        frameIndex: elapsedFrames % animationState.frames,
+    };
+}
+
+function startPlayerAnimation(animationConfig, loops) {
+    state.playerAnimation.active = true;
+    state.playerAnimation.row = animationConfig.row;
+    state.playerAnimation.frames = animationConfig.frames;
+    state.playerAnimation.speed = animationConfig.speed;
+    state.playerAnimation.loops = loops;
+    state.playerAnimation.startTime = performance.now();
+}
+
+function stopPlayerAnimation() {
+    state.playerAnimation.active = false;
 }
 
 function onKeyDown(event) {
@@ -1302,6 +1412,8 @@ function executeSingleTriggerAction(action, context = {}) {
     switch (action.kind) {
         case "playSound":
             return executePlaySoundAction(action);
+        case "playPlayerAnimation":
+            return executePlayPlayerAnimationAction(action);
         case "openModalText":
             return executeOpenTextAction(action);
         case "openModalVideo":
@@ -1450,6 +1562,57 @@ function executePlaySoundAction(action) {
     }
 
     return state.audio.playSound(soundKey);
+}
+
+function executePlayPlayerAnimationAction(action) {
+    const animationConfig = resolvePlayerAnimationAction(action);
+    if (!animationConfig) {
+        return false;
+    }
+
+    let loops = 1;
+    if (action.loops === undefined) {
+        loops = 1;
+    } else if (Number.isInteger(action.loops) && action.loops > 0) {
+        loops = action.loops;
+    } else {
+        console.warn(
+            "[triggers] playPlayerAnimation loops must be an integer >= 1. Using 1 loop.",
+        );
+    }
+
+    startPlayerAnimation(animationConfig, loops);
+    return true;
+}
+
+function resolvePlayerAnimationAction(action) {
+    const animationKey =
+        typeof action.animationKey === "string" && action.animationKey.trim() !== ""
+            ? action.animationKey.trim()
+            : null;
+
+    if (!animationKey) {
+        console.warn(
+            "[triggers] playPlayerAnimation action needs a non-empty animationKey.",
+        );
+        return null;
+    }
+
+    const animationConfig = GAME_CONFIG.player.animations?.[animationKey];
+    if (!animationConfig) {
+        console.warn(
+            `[player] Unknown player animation key "${animationKey}".`,
+        );
+        return null;
+    }
+
+    return {
+        row: animationConfig.row,
+        frames: animationConfig.frames,
+        speed: Number.isInteger(animationConfig.speed) && animationConfig.speed > 0
+            ? animationConfig.speed
+            : GAME_CONFIG.player.moveDurationMs,
+    };
 }
 
 function executeMakePassableAction(action, context = {}) {
@@ -1919,10 +2082,14 @@ function validateOverlayDimensions(overlayImage) {
 
 function validateSpriteSheet(image) {
     const directionEntries = Object.values(GAME_CONFIG.player.directions);
-    const maxFrames = Math.max(
-        ...directionEntries.map((entry) => entry.frames),
+    const extraAnimationEntries = Object.values(
+        GAME_CONFIG.player.animations || {},
     );
-    const maxRow = Math.max(...directionEntries.map((entry) => entry.row));
+    const allEntries = directionEntries.concat(extraAnimationEntries);
+    const maxFrames = Math.max(
+        ...allEntries.map((entry) => entry.frames),
+    );
+    const maxRow = Math.max(...allEntries.map((entry) => entry.row));
 
     const requiredWidth = maxFrames * GAME_CONFIG.player.frameWidth;
     const requiredHeight = (maxRow + 1) * GAME_CONFIG.player.frameHeight;

@@ -1,6 +1,7 @@
 const SUPPORTED_TRIGGER_TYPES = new Set(["onEnterCell", "onInteractCell"]);
 const SUPPORTED_ACTION_KINDS = new Set([
     "playSound",
+    "playPlayerAnimation",
     "openModalText",
     "openModalVideo",
     "openModalHtml",
